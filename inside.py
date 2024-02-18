@@ -25,3 +25,26 @@ def inside_polygon(points, polygon):
     a_p = np.sum(a_p.reshape((points.shape[0], polygon.shape[0])), axis=1)
 
     return np.abs(a_p - a_r) < 1e-8
+
+
+def inside_polygon_robot(robot, polygon, robot_radius):
+    angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
+
+    for angle in angles:
+        x = robot[0][0] + robot_radius * np.cos(angle)
+        y = robot[0][1] + robot_radius * np.sin(angle)
+
+        if inside_polygon(np.array([[x, y]], dtype=float), polygon)[0]:
+            return True  
+    return False
+
+def near_polygon(point, polygon):
+    angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
+
+    for angle in angles:
+        x = point[0] + 0.2 * np.cos(angle)
+        y = point[0] + 0.2 * np.sin(angle)
+
+        if inside_polygon(np.array([[x, y]], dtype=float), polygon)[0]:
+            return True  
+    return False

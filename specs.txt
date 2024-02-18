@@ -1,0 +1,3 @@
+robot =
+
+triangle = random 2D point => random angle * 1 = 2nd 2D point
