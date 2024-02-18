@@ -32,7 +32,7 @@ def generate_triangle(generate_from_x = -3, generate_to_x = 3, generate_from_y =
                 [point2, point3],
                 [point3, point1],
             ], dtype=float)
-            print(area_triangle)
+            # print(area_triangle)
             return triangle
 
 def generate_square(generate_from_x = -3, generate_to_x = 3, generate_from_y = -3, generate_to_y = 3):

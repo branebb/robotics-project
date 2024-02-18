@@ -48,3 +48,26 @@ def near_polygon(point, polygon):
         if inside_polygon(np.array([[x, y]], dtype=float), polygon)[0]:
             return True  
     return False
+
+def near_wall(point, polygon):
+    angles = np.linspace(0, 2 * np.pi, 180, endpoint=False)
+
+    for angle in angles:
+        x = point[0] + 0.21 * np.cos(angle)
+        y = point[1] + 0.21 * np.sin(angle)
+
+        if  not inside_polygon(np.array([[x, y]], dtype=float), polygon)[0]:
+            return True  
+    return False
+
+def expand_points(points):
+        expanded_points_list = []
+        for point in points:
+            
+            angles = np.linspace(0, 2 * np.pi, 360, endpoint=False)
+            
+            expanded_points = np.array([[point[0] + 0.2 * np.cos(angle), point[1] + 0.2 * np.sin(angle)] for angle in angles])
+            
+            expanded_points_list.append(np.vstack((point, expanded_points)))
+
+        return np.array(expanded_points_list, dtype=float)
