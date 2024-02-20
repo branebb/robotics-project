@@ -175,6 +175,3 @@ def R_array(thetas):
     R_[:, 1, 1] = np.cos(thetas)
     R_[:, 2, 2] = np.ones_like(thetas)
     return R_
-
-
-

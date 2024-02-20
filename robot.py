@@ -1,6 +1,5 @@
 import numpy as np
 from shared import R
-from ray_casting import ray_casting
 
 def M(l):
     return np.array([
@@ -8,7 +7,6 @@ def M(l):
         [1, 0, l],
         [0, 1, 0]
     ], dtype=float)
-
 
 def M_inv(l):
     return np.array([

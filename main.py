@@ -9,7 +9,7 @@ from matplotlib.collections import LineCollection
 
 
 from world import generate_world
-from inside import inside_polygon, inside_polygon_robot, expand_points
+from inside import inside_polygon, inside_polygon_robot, expand_points, inside_polygon3d
 
 def generate_robot(lines_env):
 
@@ -33,24 +33,50 @@ def generate_robot(lines_env):
         if not inside_obstacle:
             return robot
 
-def in_near_obstacle(expanded_points):
+def in_near_obstacle(expanded_points, lines_env):
 
-    tf_array = []
+    outer_wall_region = lines_env[0:4]
+    obstacles = [lines_env[4:7], lines_env[7:11], lines_env[11:17], lines_env[17:20],
+               lines_env[20:24], lines_env[24:30], lines_env[30:33], lines_env[33:37],
+               lines_env[37:43]]
 
-    for expaneded_point in expanded_points:
-        inside_obstacle = inside_polygon(expaneded_point, lines_env[4:7]) \
-                        | inside_polygon(expaneded_point, lines_env[7:11]) \
-                        | inside_polygon(expaneded_point, lines_env[11:17]) \
-                        | inside_polygon(expaneded_point, lines_env[17:20]) \
-                        | inside_polygon(expaneded_point, lines_env[20:24]) \
-                        | inside_polygon(expaneded_point, lines_env[24:30]) \
-                        | inside_polygon(expaneded_point, lines_env[30:33]) \
-                        | inside_polygon(expaneded_point, lines_env[33:37]) \
-                        | inside_polygon(expaneded_point, lines_env[37:43]) \
-                        | ~inside_polygon(expaneded_point, lines_env[0:4])
-        tf_array.append(any(inside_obstacle))
-    return tf_array
+    inside_outer_wall = np.array([~inside_polygon(point, outer_wall_region) for point in expanded_points])
 
+    result_outer_wall = np.any(inside_outer_wall, axis=1)
+
+    result_obstacles = []
+
+    for obstacle in obstacles:
+        inside_obstacles = np.any(np.array([inside_polygon(point, obstacle) for point in expanded_points]), axis=1)
+
+        result_obstacles.append(inside_obstacles)
+
+    result_obstacles = np.array(result_obstacles)
+
+    result = result_outer_wall | np.any(result_obstacles, axis=0)
+
+    return result
+
+
+def generate_goal(robot, lines_env):
+    while True:
+        goal_position = np.array([np.random.randint(-28, 28) * 0.1 + 0.05,
+                                   np.random.randint(-28, 27) * 0.1 - 0.05], dtype=float)
+        
+        goal_check = np.array([goal_position], dtype=float)
+
+        inside_obstacle = inside_polygon_robot(goal_check, lines_env[4:7], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[7:11], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[11:17], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[17:20], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[20:24], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[24:30], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[30:33], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[33:37], 0.3) \
+                        | inside_polygon_robot(goal_check, lines_env[37:43], 0.3)
+    
+        if not inside_obstacle and not all(np.equal(goal_position, robot.I_xi[:2])):
+            return goal_position
 
 def animate(i, robot, shapes, dt):
     # print(i)
@@ -91,9 +117,11 @@ if __name__ == "__main__":
 
     expaneded_points = expand_points(points_mean)
     
-    in_near = in_near_obstacle(expaneded_points)
+    in_near = in_near_obstacle(expaneded_points, lines_env)
 
     points_color[in_near] = colors.lightgray
+
+    goal = generate_goal(robot, lines_env)
 
     robot_patch = ax.add_patch(
         Wedge(
@@ -104,8 +132,6 @@ if __name__ == "__main__":
             zorder=2
         )
     )
-
-    robot_position = np.array([robot.I_xi], dtype=float)
 
     rectangles = []
 
@@ -132,7 +158,8 @@ if __name__ == "__main__":
     shapes[0].set_alpha(0.5)
 
     shapes[1][round((robot.I_xi[0] + 2.95) * 10) + abs(round((robot.I_xi[1] - 2.95) * 600))].set_color(colors.red)
-    
+    shapes[1][round((goal[0] + 2.95) * 10) + abs(round((goal[1] - 2.95) * 600))].set_color(colors.green)
+
     # ani = FuncAnimation(
     #     fig,
     #     animate,
