@@ -32,7 +32,6 @@ def generate_triangle(generate_from_x = -3, generate_to_x = 3, generate_from_y =
                 [point2, point3],
                 [point3, point1],
             ], dtype=float)
-            # print(area_triangle)
             return triangle
 
 def generate_square(generate_from_x = -3, generate_to_x = 3, generate_from_y = -3, generate_to_y = 3):
@@ -104,16 +103,13 @@ def generate_hexagon(generate_from_x = -3, generate_to_x = 3, generate_from_y = 
             return hexagon
 
 def generate_world():
-    # fixed outerspace
     world = np.array([
-        # fixed outspace
         [[-3, -3], [-3, 3]],
         [[-3, 3], [3, 3]],
         [[3, 3], [3, -3]],
         [[3, -3], [-3, -3]]
     ], dtype=float)
 
-    #generate 9 objects #change this
     triangle = generate_triangle(-3, -1, 1, 3)
     square = generate_square(-1, 1, 1, 3)
     hexagon = generate_hexagon(1, 3, 1, 3)
@@ -126,9 +122,8 @@ def generate_world():
     square3 = generate_square(-1, 1, -3, -1)
     hexagon3 = generate_hexagon(1, 3, -3, -1)
 
-    #add them to world
     world = np.concatenate((world, 
-                            triangle, square, hexagon, 
+                            triangle,  square,  hexagon, 
                             triangle2, square2, hexagon2,
                             triangle3, square3, hexagon3), axis=0)
     

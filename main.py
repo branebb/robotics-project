@@ -9,13 +9,23 @@ from matplotlib.collections import LineCollection
 
 
 from world import generate_world
-from inside import inside_polygon, inside_polygon_robot, expand_points, inside_polygon3d
+from inside import inside_polygon, inside_polygon_robot, expand_points
+
+sign = -1
+
+def path_planning(i):
+    v = 0.8
+    omega = 3 / 4 * np.pi
+    if i % 30 == 0:
+        global sign
+        sign *= -1
+    return np.array([v, 0, sign * omega], dtype=float)
 
 def generate_robot(lines_env):
 
     while True:
-        robot = Robot(np.array([np.random.randint(-28, 28) * 0.1 + 0.05,
-                            np.random.randint(-28, 27) * 0.1 - 0.05,
+        robot = Robot(np.array([np.random.randint(-27, 27) * 0.1 + 0.05,
+                            np.random.randint(-27, 27) * 0.1 - 0.05,
                             np.random.randint(0, 2 * np.pi)], dtype=float))
         
         robot_position = np.array([robot.I_xi], dtype=float)
@@ -60,8 +70,8 @@ def in_near_obstacle(expanded_points, lines_env):
 
 def generate_goal(robot, lines_env):
     while True:
-        goal_position = np.array([np.random.randint(-28, 28) * 0.1 + 0.05,
-                                   np.random.randint(-28, 27) * 0.1 - 0.05], dtype=float)
+        goal_position = np.array([np.random.randint(-27, 27) * 0.1 + 0.05,
+                                   np.random.randint(-27, 27) * 0.1 - 0.05], dtype=float)
         
         goal_check = np.array([goal_position], dtype=float)
 
@@ -79,18 +89,17 @@ def generate_goal(robot, lines_env):
             return goal_position
 
 def animate(i, robot, shapes, dt):
-    # print(i)
+    R_xi_dot = path_planning(i)
+    phis_dot = robot.R_inverse_kinematics(R_xi_dot)
+    I_xi_dot = robot.forward_kinematics(phis_dot)
+    robot.update_state(I_xi_dot, dt)
 
-    # if i < len(shapes[1]):
-    #     shapes[1][i].set_facecolor(colors.red)
-    
-    # return shapes
-    return 0
+    update_wedge(shapes[0], robot.I_xi)
 
 if __name__ == "__main__":
     fig, ax = init_plot_2D(lim_from=-3.5, lim_to=3.5)
 
-    num_frames = 150
+    num_frames = 100
     fps = 30
     dt = 1 / fps
 
@@ -165,7 +174,7 @@ if __name__ == "__main__":
     #     animate,
     #     fargs=(robot, shapes, dt),
     #     frames=num_frames,
-    #     interval=dt * 1,
+    #     interval=dt * 1000,
     #     repeat=False,
     #     blit=False,
     #     init_func=lambda: None
