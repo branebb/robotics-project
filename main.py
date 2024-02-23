@@ -7,7 +7,6 @@ from robot import Robot
 from matplotlib.patches import Wedge, Rectangle
 from matplotlib.collections import LineCollection
 
-
 from world import generate_world
 from inside import inside_polygon, inside_polygon_robot, expand_points
 
@@ -58,7 +57,6 @@ def in_near_obstacle(expanded_points, lines_env):
 
     for obstacle in obstacles:
         inside_obstacles = np.any(np.array([inside_polygon(point, obstacle) for point in expanded_points]), axis=1)
-
         result_obstacles.append(inside_obstacles)
 
     result_obstacles = np.array(result_obstacles)
@@ -66,7 +64,6 @@ def in_near_obstacle(expanded_points, lines_env):
     result = result_outer_wall | np.any(result_obstacles, axis=0)
 
     return result
-
 
 def generate_goal(robot, lines_env):
     while True:
@@ -87,19 +84,128 @@ def generate_goal(robot, lines_env):
     
         if not inside_obstacle and not all(np.equal(goal_position, robot.I_xi[:2])):
             return goal_position
+        
+def heuristic(x, y, goal):
+    return abs(goal[0] - x) + abs(goal[1] - y)
 
-def animate(i, robot, shapes, dt):
-    R_xi_dot = path_planning(i)
-    phis_dot = robot.R_inverse_kinematics(R_xi_dot)
-    I_xi_dot = robot.forward_kinematics(phis_dot)
-    robot.update_state(I_xi_dot, dt)
+def find_path(robot_position, goal_position, grid):
 
-    update_wedge(shapes[0], robot.I_xi)
+    goal = [round(abs((goal_position[1] - 2.95) * 10)),
+            round((goal_position[0] + 2.95) * 10)]
+    
+    delta = [[-1, 0],
+             [0, -1],
+             [1, 0],
+             [0, 1],
+             [1, 1],
+             [1, -1],
+             [-1, 1],
+             [-1, -1]]
+    cost = 1
+    
+    closed = [[0 for row in range(60)] for col in range(60)]
+    closed[round(abs((robot_position[1] - 2.95) * 10))][round((robot_position[0] + 2.95) * 10)] = 1
+
+    expand = [[-1 for row in range(60)] for col in range(60)]
+    parent = [[[-1, -1] for row in range(60)] for col in range(60)]
+
+
+    x = round(abs((robot_position[1] - 2.95) * 10))
+    y = round((robot_position[0] + 2.95) * 10)
+    g = 0
+    h = heuristic(x, y, goal_position)
+    f = g + h
+
+    open = [[f, g, h, x, y]]
+
+    found = False
+    resign = False
+    count = 0
+
+    while found is False and resign is False:
+        if len(open) == 0:
+            resign = True
+            print("Fail")
+
+        else:
+            open.sort()
+            open.reverse()
+            next = open.pop()
+            g = next[1]
+            x = next[3]
+            y = next[4]
+            expand[x][y] = count
+            count += 1
+
+            if x == goal[0] and y == goal[1]:
+                found = True
+            
+            else:
+                for i in range(len(delta)):
+                    x2 = x + delta[i][0]
+                    y2 = y + delta[i][1]
+                    if x2 >= 0 and x2 < 60 and y2 >= 0 and y2 < 60:
+                        if closed[x2][y2] == 0 and grid[x2][y2] == 0:
+                            g2 = g + cost
+                            h2 = heuristic(x2, y2, goal)
+                            f2 = g2 + h2
+                            open.append([f2, g2, h2, x2, y2])
+                            closed[x2][y2] = 1
+                            parent[x2][y2] = [x, y]
+
+    path = []
+    x, y = goal
+    while y != round((robot_position[0] + 2.95) * 10) or x != round(abs((robot_position[1] - 2.95) * 10)):
+        path.append([x, y])
+        x, y = parent[x][y]
+    path.append([round(abs((robot_position[1] - 2.95) * 10)), round((robot_position[0] + 2.95) * 10)])
+    path.reverse()
+    
+    return path
+
+def animate(i, robot, shapes, path_points, dt):
+    if len(path_points):
+
+        if np.linalg.norm(robot.I_xi[:2] - path_points[0]) < 0.025:
+            path_points.pop(0)
+
+        if len(path_points):
+            target_point = path_points[0]
+
+            v, omega = path_planning(robot.I_xi, target_point)
+
+            phis_dot = robot.R_inverse_kinematics(np.array([v, 0, omega], dtype=float))
+            I_ksi_dot = robot.forward_kinematics(phis_dot)
+            robot.update_state(I_ksi_dot, dt)
+
+            update_wedge(shapes[0], robot.I_xi)
+
+def path_planning(robot_position, target_point):
+    
+    target_angle = np.arctan2(target_point[1] - robot_position[1], target_point[0] - robot_position[0])
+    desired_angle = normalize_angle(target_angle - robot_position[2])
+    distance_to_target = np.linalg.norm(target_point - robot_position[:2])
+    
+    max_angular_velocity = np.pi / 2  
+    if np.abs(desired_angle) > np.pi / 4:
+        omega = np.clip(np.sign(desired_angle) * max_angular_velocity, -max_angular_velocity, max_angular_velocity)
+    else:
+
+        omega = desired_angle  
+        
+    max_linear_velocity = 2.5
+
+    v = min(max_linear_velocity, distance_to_target)
+    
+    return v, omega
+
+def normalize_angle(angle):
+    return np.arctan2(np.sin(angle), np.cos(angle))
 
 if __name__ == "__main__":
     fig, ax = init_plot_2D(lim_from=-3.5, lim_to=3.5)
 
-    num_frames = 100
+    num_frames = 1000
     fps = 30
     dt = 1 / fps
 
@@ -144,40 +250,81 @@ if __name__ == "__main__":
 
     rectangles = []
 
-    for i in range(len(points)):
-        rectangle = ax.add_patch(
-            Rectangle(
-                points[i],
-                0.1,
-                0.1,
-                angle=-90,
-                edgecolor=colors.lightgray,
-                facecolor=points_color[i],
-                zorder=0
+    for i, near_obstacle in enumerate(in_near):
+        if near_obstacle:
+            rectangle = ax.add_patch(
+                Rectangle(
+                    points[i],
+                    0.1,
+                    0.1,
+                    angle=-90,
+                    edgecolor=colors.lightgray,
+                    facecolor=points_color[i],
+                    zorder=0
+                )
             )
-        )
-        
-        rectangles.append(rectangle)
+            rectangles.append(rectangle)
 
 
     shapes.append(robot_patch)
-    shapes.append(rectangles)
 
     shapes[0].set_color(colors.blue)
     shapes[0].set_alpha(0.5)
 
-    shapes[1][round((robot.I_xi[0] + 2.95) * 10) + abs(round((robot.I_xi[1] - 2.95) * 600))].set_color(colors.red)
-    shapes[1][round((goal[0] + 2.95) * 10) + abs(round((goal[1] - 2.95) * 600))].set_color(colors.green)
+    grid = np.array(in_near.astype(int), dtype=int).reshape((60, 60))
 
-    # ani = FuncAnimation(
-    #     fig,
-    #     animate,
-    #     fargs=(robot, shapes, dt),
-    #     frames=num_frames,
-    #     interval=dt * 1000,
-    #     repeat=False,
-    #     blit=False,
-    #     init_func=lambda: None
-    # )
+    ideal_path = find_path(robot.I_xi[:2], goal, grid)
+    ideal_path = ideal_path[1:-1]
+    path_points = []
+    for i in range(len(ideal_path)):
+        path_points.append([round(ideal_path[i][1] * 0.1 - 3, 2) + 0.05, round(-1 * ideal_path[i][0] * 0.1 + 3, 2) - 0.05])
+        rectangle = ax.add_patch(
+            Rectangle(
+                [round(ideal_path[i][1] * 0.1 - 3, 2), round(-1 * ideal_path[i][0] * 0.1 + 3, 2)],
+                0.1,
+                0.1,
+                angle=-90,
+                color=colors.yellow,
+                zorder=0
+            )
+        )
+   
+    rectangle = ax.add_patch(
+                Rectangle(
+                    [robot.I_xi[0] - 0.05, robot.I_xi[1] + 0.05],
+                    0.1,
+                    0.1,
+                    angle=-90,
+                    color=colors.red,
+                    zorder=0
+                )
+            )
+    rectangle = ax.add_patch(
+                Rectangle(
+                    [goal[0] - 0.05, goal[1] + 0.05],
+                    0.1,
+                    0.1,
+                    angle=-90,
+                    color=colors.green,
+                    zorder=0
+                )
+            )
+    
+    first_point = path_points[0]
+    target_angle = np.arctan2(first_point[1] - robot.I_xi[1], first_point[0] - robot.I_xi[0])
+    robot.I_xi[2] = target_angle
+
+    update_wedge(shapes[0], robot.I_xi)
+
+    ani = FuncAnimation(
+        fig,
+        animate,
+        fargs=(robot, shapes, path_points, dt),
+        frames=num_frames,
+        interval=dt * 1000,
+        repeat=False,
+        blit=False,
+        init_func=lambda: None
+    )
     
     plt.show()

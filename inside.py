@@ -39,7 +39,7 @@ def inside_polygon_robot(robot, polygon, robot_radius):
     return np.any(inside_polygon(points, polygon))
 
 def expand_points(points):
-        angles = np.linspace(0, 2 * np.pi, 180, endpoint=False)
+        angles = np.linspace(0, 2 * np.pi, 135, endpoint=False)
 
         cos_angles = np.cos(angles)
         sin_angles = np.sin(angles)
