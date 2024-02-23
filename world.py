@@ -25,7 +25,7 @@ def generate_triangle(generate_from_x = -3, generate_to_x = 3, generate_from_y =
         
         area = abs(generate_to_x - generate_from_x) * abs(generate_to_y - generate_from_y)
         
-        if all(generate_range(p) for p in [point1, point2, point3]) and (0.025 * area <= area_triangle <= 0.05 * area):
+        if all(generate_range(p) for p in [point1, point2, point3]) and (0.05 * area <= area_triangle <= 0.10 * area):
         
             triangle = np.array([
                 [point1, point2],
@@ -45,8 +45,8 @@ def generate_square(generate_from_x = -3, generate_to_x = 3, generate_from_y = -
 
         area = abs(generate_to_x - generate_from_x) * abs(generate_to_y - generate_from_y)
 
-        min_len = (0.025 * area) ** (1 / 2) 
-        max_len = (0.05 * area) ** (1 / 2) 
+        min_len = (0.05 * area) ** (1 / 2) 
+        max_len = (0.10 * area) ** (1 / 2) 
 
         length = np.random.uniform(min_len, max_len)
 
@@ -76,8 +76,8 @@ def generate_hexagon(generate_from_x = -3, generate_to_x = 3, generate_from_y = 
 
         area = abs(generate_to_x - generate_from_x) * abs(generate_to_y - generate_from_y)
 
-        min_len = ((0.05 * area * 2) / (3 * (3  ** (1 / 2)))) ** (1 / 2)
-        max_len = ((0.075 * area * 2) / (3 * (3  ** (1 / 2)))) ** (1 / 2)
+        min_len = ((0.10 * area * 2) / (3 * (3  ** (1 / 2)))) ** (1 / 2)
+        max_len = ((0.15 * area * 2) / (3 * (3  ** (1 / 2)))) ** (1 / 2)
 
         length = np.random.uniform(min_len, max_len)
 

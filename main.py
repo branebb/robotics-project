@@ -1,24 +1,15 @@
 import numpy as np
 from shared import init_plot_2D, R_array, update_wedge, normalize_angle
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 import colors
 from robot import Robot
 from matplotlib.patches import Wedge, Rectangle
-from matplotlib.collections import LineCollection
+from matplotlib.collections import LineCollection, PatchCollection
 
 from world import generate_world
 from inside import inside_polygon, inside_polygon_robot, expand_points
-
-sign = -1
-
-def path_planning(i):
-    v = 0.8
-    omega = 3 / 4 * np.pi
-    if i % 30 == 0:
-        global sign
-        sign *= -1
-    return np.array([v, 0, sign * omega], dtype=float)
 
 def generate_robot(lines_env):
 
@@ -59,10 +50,9 @@ def in_near_obstacle(expanded_points, lines_env):
         inside_obstacles = np.any(np.array([inside_polygon(point, obstacle) for point in expanded_points]), axis=1)
         result_obstacles.append(inside_obstacles)
 
-    result_obstacles = np.array(result_obstacles)
+    result_obstacles = np.any(np.array(result_obstacles), axis=0)
 
-    result = result_outer_wall | np.any(result_obstacles, axis=0)
-
+    result = result_outer_wall | result_obstacles
     return result
 
 def generate_goal(robot, lines_env):
@@ -164,9 +154,11 @@ def find_path(robot_position, goal_position, grid):
     return path
 
 def animate(i, robot, shapes, path_points, dt):
+    global continue_animation
+    
     if len(path_points):
 
-        if np.linalg.norm(robot.I_xi[:2] - path_points[0]) < 0.025:
+        if np.linalg.norm(robot.I_xi[:2] - path_points[0]) < 0.05:
             path_points.pop(0)
 
         if len(path_points):
@@ -179,6 +171,8 @@ def animate(i, robot, shapes, path_points, dt):
             robot.update_state(I_ksi_dot, dt)
 
             update_wedge(shapes[0], robot.I_xi)
+    else:
+        continue_animation = False
 
 def path_planning(robot_position, target_point):
     
@@ -190,10 +184,9 @@ def path_planning(robot_position, target_point):
     if np.abs(desired_angle) > np.pi / 4:
         omega = np.clip(np.sign(desired_angle) * max_angular_velocity, -max_angular_velocity, max_angular_velocity)
     else:
-
         omega = desired_angle  
         
-    max_linear_velocity = 2.5
+    max_linear_velocity = 1
 
     v = min(max_linear_velocity, distance_to_target)
     
@@ -205,8 +198,8 @@ def normalize_angle(angle):
 if __name__ == "__main__":
     fig, ax = init_plot_2D(lim_from=-3.5, lim_to=3.5)
 
-    num_frames = 1000
-    fps = 30
+    max_frames = 1000
+    fps = 15
     dt = 1 / fps
 
     shapes = []
@@ -249,25 +242,22 @@ if __name__ == "__main__":
     )
 
     rectangles = []
-
     for i, near_obstacle in enumerate(in_near):
-        if near_obstacle:
-            rectangle = ax.add_patch(
-                Rectangle(
+            rectangle = Rectangle(
                     points[i],
                     0.1,
                     0.1,
-                    angle=-90,
-                    edgecolor=colors.lightgray,
                     facecolor=points_color[i],
-                    zorder=0
+                    edgecolor=colors.lightgray,
+                    angle=-90,
+                    zorder=0,
                 )
-            )
             rectangles.append(rectangle)
 
-
+    # Thanks to Ramal Salha for his contribution! 
+    ax.add_collection(PatchCollection(rectangles,match_original=True))
+    
     shapes.append(robot_patch)
-
     shapes[0].set_color(colors.blue)
     shapes[0].set_alpha(0.5)
 
@@ -276,21 +266,22 @@ if __name__ == "__main__":
     ideal_path = find_path(robot.I_xi[:2], goal, grid)
     ideal_path = ideal_path[1:-1]
     path_points = []
+
+    rectangles2 = []
+
     for i in range(len(ideal_path)):
         path_points.append([round(ideal_path[i][1] * 0.1 - 3, 2) + 0.05, round(-1 * ideal_path[i][0] * 0.1 + 3, 2) - 0.05])
-        rectangle = ax.add_patch(
-            Rectangle(
+        rectangle = Rectangle(
                 [round(ideal_path[i][1] * 0.1 - 3, 2), round(-1 * ideal_path[i][0] * 0.1 + 3, 2)],
                 0.1,
                 0.1,
                 angle=-90,
-                color=colors.yellow,
                 zorder=0
             )
-        )
+        rectangles2.append(rectangle)
+    ax.add_collection(PatchCollection(rectangles2, color=colors.yellow))
    
-    rectangle = ax.add_patch(
-                Rectangle(
+    start = Rectangle(
                     [robot.I_xi[0] - 0.05, robot.I_xi[1] + 0.05],
                     0.1,
                     0.1,
@@ -298,9 +289,7 @@ if __name__ == "__main__":
                     color=colors.red,
                     zorder=0
                 )
-            )
-    rectangle = ax.add_patch(
-                Rectangle(
+    finish = Rectangle(
                     [goal[0] - 0.05, goal[1] + 0.05],
                     0.1,
                     0.1,
@@ -308,7 +297,7 @@ if __name__ == "__main__":
                     color=colors.green,
                     zorder=0
                 )
-            )
+    ax.add_collection(PatchCollection([start, finish], match_original=True))
     
     first_point = path_points[0]
     target_angle = np.arctan2(first_point[1] - robot.I_xi[1], first_point[0] - robot.I_xi[0])
@@ -316,15 +305,21 @@ if __name__ == "__main__":
 
     update_wedge(shapes[0], robot.I_xi)
 
+    path_points.append([goal[0], goal[1]])
+
     ani = FuncAnimation(
         fig,
         animate,
         fargs=(robot, shapes, path_points, dt),
-        frames=num_frames,
-        interval=dt * 1000,
-        repeat=False,
+        frames=max_frames,
+        interval=1,
+        repeat=True,
         blit=False,
         init_func=lambda: None
     )
-    
+    # writer = animation.PillowWriter(fps=30,
+    #                                 metadata=dict(artist='Branimir Brekalo'),
+    #                                 bitrate=1800)
+    # ani.save('A_star2.gif', writer=writer)
     plt.show()
+    

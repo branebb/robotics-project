@@ -47,8 +47,8 @@ def expand_points(points):
         cos_expanded = cos_angles.reshape(1, -1)
         sin_expanded = sin_angles.reshape(1, -1)
 
-        expanded_points_x = points[:, 0][:, np.newaxis] + cos_expanded * 0.2
-        expanded_points_y = points[:, 1][:, np.newaxis] + sin_expanded * 0.2
+        expanded_points_x = points[:, 0][:, np.newaxis] + cos_expanded * 0.21
+        expanded_points_y = points[:, 1][:, np.newaxis] + sin_expanded * 0.21
 
         expanded_points = np.stack((expanded_points_x, expanded_points_y), axis=-1)
 
