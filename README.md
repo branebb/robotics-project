@@ -1,1 +1,1 @@
-[Example gif #1](/A_star.gif)
+[Example gif #1](https://raw.githubusercontent.com/branebb/robotics-project/main//A_star.gif)
