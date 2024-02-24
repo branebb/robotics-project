@@ -1,9 +1,10 @@
 import numpy as np
 
+#function for generating triangle given the coordinates in 2D space
+#checks if the area of triangle is in 5%-10% of the maximum area
 def generate_triangle(generate_from_x = -3, generate_to_x = 3, generate_from_y = -3, generate_to_y = 3):
     
     while True:
-
         point1 = np.array([np.random.uniform(generate_from_x, generate_to_x), 
                            np.random.uniform(generate_from_y, generate_to_y)], dtype=float)
         
@@ -34,6 +35,8 @@ def generate_triangle(generate_from_x = -3, generate_to_x = 3, generate_from_y =
             ], dtype=float)
             return triangle
 
+#function for generating square given the coordinates in 2D space
+#generating side length with respect of the maximum area (5% - 10%)
 def generate_square(generate_from_x = -3, generate_to_x = 3, generate_from_y = -3, generate_to_y = 3):
     while True:
 
@@ -67,6 +70,8 @@ def generate_square(generate_from_x = -3, generate_to_x = 3, generate_from_y = -
             ], dtype=float)
             return rectangle
 
+#function for generating hexagon given the coordinates in 2D space
+#generating side length with respect of the maximum area (10% - 15%)
 def generate_hexagon(generate_from_x = -3, generate_to_x = 3, generate_from_y = -3, generate_to_y = 3):
     while True:
         point1 = np.array([np.random.uniform(generate_from_x, generate_to_x), 
@@ -102,6 +107,7 @@ def generate_hexagon(generate_from_x = -3, generate_to_x = 3, generate_from_y = 
             ], dtype=float)
             return hexagon
 
+#generating custom world
 def generate_world():
     world = np.array([
         [[-3, -3], [-3, 3]],

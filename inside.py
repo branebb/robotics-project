@@ -1,5 +1,4 @@
 import numpy as np
-from robot import Robot
 
 def inside_polygon(points, polygon):
     res_sides = polygon[:, 1, :] - polygon[:, 0, :]
@@ -27,6 +26,8 @@ def inside_polygon(points, polygon):
 
     return np.abs(a_p - a_r) < 1e-8
 
+#checking if robot or some point in some radius is in the polygon
+#True if only one point is in, otherwise False
 def inside_polygon_robot(robot, polygon, robot_radius):
 
     angles = np.linspace(0, 2 * np.pi, 180, endpoint=False)
@@ -38,6 +39,8 @@ def inside_polygon_robot(robot, polygon, robot_radius):
 
     return np.any(inside_polygon(points, polygon))
 
+#expanding point with new axis making (3600, 136, 2) shape instead of (3600, 2)
+#generating 135 additional points
 def expand_points(points):
         angles = np.linspace(0, 2 * np.pi, 135, endpoint=False)
 
@@ -53,3 +56,27 @@ def expand_points(points):
         expanded_points = np.stack((expanded_points_x, expanded_points_y), axis=-1)
 
         return expanded_points
+
+#checking if any of the 136 points is in the one obstacle returing True is one is and repeating that
+#for all obstacles resulting True/False  array with shape (3600,)
+def in_near_obstacle(expanded_points, lines_env):
+
+    outer_wall_region = lines_env[0:4]
+    obstacles = [lines_env[4:7], lines_env[7:11], lines_env[11:17], lines_env[17:20],
+                lines_env[20:24], lines_env[24:30], lines_env[30:33], lines_env[33:37],
+                lines_env[37:43]]
+
+    inside_outer_wall = np.array([~inside_polygon(point, outer_wall_region) for point in expanded_points])
+    result_outer_wall = np.any(inside_outer_wall, axis=1)
+
+    result_obstacles = []
+
+    for obstacle in obstacles:
+        inside_obstacles = np.any(np.array([inside_polygon(point, obstacle) for point in expanded_points]), axis=1)
+        result_obstacles.append(inside_obstacles)
+
+    result_obstacles = np.any(np.array(result_obstacles), axis=0)
+
+    result = result_outer_wall | result_obstacles
+    
+    return result
